@@ -6,18 +6,95 @@ import type { PayloadAdapter } from './types'
 import { ModelKey } from '../generated-types'
 import { DBAdapter } from '@better-auth/core/db/adapter'
 
+/**
+ * Context key used to identify operations initiated by the Better Auth adapter.
+ *
+ * This key is attached to all Payload operations via the `context` parameter,
+ * allowing hooks and other middleware to detect and handle Better Auth operations
+ * differently if needed.
+ *
+ * @example Detecting adapter operations in a Payload hook
+ * ```ts
+ * {
+ *   hooks: {
+ *     beforeChange: [
+ *       ({ context }) => {
+ *         if (context?.['payload-db-adapter']) {
+ *           // This operation came from Better Auth
+ *         }
+ *       }
+ *     ]
+ *   }
+ * }
+ * ```
+ */
 export const BETTER_AUTH_CONTEXT_KEY = 'payload-db-adapter'
+
+/**
+ * Query depth used for all Payload operations.
+ *
+ * Set to 0 to prevent automatic population of relationship fields.
+ * The adapter handles relationship IDs manually for consistency with Better Auth.
+ */
 const PAYLOAD_QUERY_DEPTH = 0
 
 /**
- * Payload adapter for Better Auth
+ * Creates a Payload CMS database adapter for Better Auth.
  *
- * This adapter connects Better Auth to Payload CMS, allowing authentication
- * operations to be performed against Payload collections.
+ * This adapter implements Better Auth's `DBAdapter` interface, translating all
+ * authentication database operations (create, read, update, delete) into
+ * Payload CMS collection operations.
  *
- * @param payloadClient - The Payload CMS client instance or a function that returns it
- * @param config - Configuration options for the adapter
- * @returns A function that creates a Better Auth adapter
+ * **Key responsibilities:**
+ * - Maps Better Auth model names to Payload collection slugs
+ * - Converts Better Auth field names to Payload field names
+ * - Transforms query operators between Better Auth and Payload formats
+ * - Handles ID type conversion (Better Auth uses strings, Payload may use numbers)
+ * - Provides debug logging for troubleshooting
+ *
+ * **Important:** This adapter requires the `betterAuthPlugin` to be configured
+ * in your Payload config. It will throw an error if the plugin is not present.
+ *
+ * @param options - Adapter configuration options
+ * @param options.payloadClient - Payload client instance, promise, or factory function
+ * @param options.adapterConfig - Configuration including idType and debug settings
+ * @returns A Better Auth adapter instance factory function
+ *
+ * @example Basic usage with betterAuthPlugin (recommended)
+ * ```ts
+ * // The plugin handles adapter setup internally
+ * import { betterAuthPlugin } from 'payload-auth/better-auth/plugin'
+ *
+ * export default buildConfig({
+ *   plugins: [
+ *     betterAuthPlugin({
+ *       betterAuthOptions: {
+ *         // your Better Auth config
+ *       }
+ *     })
+ *   ]
+ * })
+ * ```
+ *
+ * @example Manual usage (advanced)
+ * ```ts
+ * import { betterAuth } from 'better-auth'
+ * import { payloadAdapter } from 'payload-auth/better-auth/adapter'
+ *
+ * export const auth = betterAuth({
+ *   database: payloadAdapter({
+ *     payloadClient: () => getPayload({ config }),
+ *     adapterConfig: {
+ *       idType: 'number',
+ *       enableDebugLogs: process.env.NODE_ENV === 'development'
+ *     }
+ *   }),
+ *   // ... other Better Auth options
+ * })
+ * ```
+ *
+ * @see {@link PayloadAdapterParams} for configuration options
+ * @see https://www.better-auth.com/docs/adapters for Better Auth adapter docs
  */
 const payloadAdapter: PayloadAdapter = ({ payloadClient, adapterConfig }) => {
   /**

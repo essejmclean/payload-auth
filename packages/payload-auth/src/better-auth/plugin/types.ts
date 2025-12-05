@@ -1,3 +1,30 @@
+/**
+ * @module plugin/types
+ *
+ * Type definitions for the Better Auth Payload plugin.
+ *
+ * This module exports:
+ * - {@link BetterAuthPluginOptions} - Main plugin configuration interface
+ * - {@link BetterAuthReturn} - Type returned by `payload.betterAuth`
+ * - {@link PayloadRequestWithBetterAuth} - Extended PayloadRequest with Better Auth
+ * - Various utility types for hooks, endpoints, and schema building
+ *
+ * @example Basic plugin configuration
+ * ```ts
+ * import { betterAuthPlugin, BetterAuthPluginOptions } from 'payload-auth/better-auth/plugin'
+ *
+ * const options: BetterAuthPluginOptions = {
+ *   betterAuthOptions: {
+ *     emailAndPassword: { enabled: true },
+ *     plugins: [organization()]
+ *   },
+ *   users: {
+ *     roles: ['user', 'admin'],
+ *     adminRoles: ['admin']
+ *   }
+ * }
+ * ```
+ */
 import type { AuthContext } from 'better-auth'
 import type { DBFieldAttribute } from 'better-auth/db'
 import type {
@@ -13,6 +40,7 @@ import type { InferSession, InferUser } from 'better-auth/types'
 import { BASE_ERROR_CODES } from '@better-auth/core/error'
 import { router } from 'better-auth/api'
 import { defaults } from './constants'
+
 /**
  * BetterAuth options with the following caveats:
  * - The `database` option is removed as it is configured internally
@@ -38,13 +66,74 @@ export type SocialProvider = (typeof socialProviders)[number]
 
 export type LoginMethod = (typeof loginMethods)[number]
 
+/**
+ * Override configuration for plugin-managed collections.
+ *
+ * Keys correspond to Better Auth plugin collection slugs (e.g., 'organization', 'member', 'team').
+ * Each override receives the built collection config and can modify it.
+ */
 type PluginCollectionOverrides = {
   [K in keyof typeof baPluginSlugs]?: (options: { collection: CollectionConfig }) => CollectionConfig
 }
 
+/**
+ * Configuration options for the Better Auth Payload plugin.
+ *
+ * This interface defines all available options for integrating Better Auth with Payload CMS.
+ * The plugin handles:
+ * - Automatic collection generation for auth tables (users, sessions, accounts, etc.)
+ * - Field mapping between Better Auth schemas and Payload fields
+ * - Optional replacement of Payload's default admin authentication
+ * - Role-based access control for auth collections
+ *
+ * @example Minimal configuration
+ * ```ts
+ * betterAuthPlugin({
+ *   betterAuthOptions: {
+ *     emailAndPassword: { enabled: true }
+ *   }
+ * })
+ * ```
+ *
+ * @example Full configuration with organizations and custom roles
+ * ```ts
+ * betterAuthPlugin({
+ *   disableDefaultPayloadAuth: true,
+ *   hidePluginCollections: true,
+ *   collectionAdminGroup: 'Authentication',
+ *   betterAuthOptions: {
+ *     emailAndPassword: { enabled: true },
+ *     socialProviders: {
+ *       google: {
+ *         clientId: process.env.GOOGLE_CLIENT_ID!,
+ *         clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+ *       }
+ *     },
+ *     plugins: [
+ *       organization(),
+ *       twoFactor()
+ *     ]
+ *   },
+ *   users: {
+ *     slug: 'users',
+ *     roles: ['user', 'editor', 'admin'],
+ *     adminRoles: ['admin'],
+ *     defaultRole: 'user',
+ *     allowedFields: ['name', 'image']
+ *   },
+ *   admin: {
+ *     loginMethods: ['google', 'email']
+ *   }
+ * })
+ * ```
+ */
 export interface BetterAuthPluginOptions {
   /**
-   * Disable the plugin
+   * Disable the plugin entirely.
+   *
+   * When true, the plugin will not modify the Payload config.
+   * Useful for conditionally disabling auth in certain environments.
+   *
    * @default false
    */
   disabled?: boolean
@@ -363,23 +452,87 @@ export type ConfigAdminCustom = {
   }
 }
 
+/**
+ * Plugin function signature with attached options.
+ *
+ * The plugin function modifies the Payload config and attaches its options
+ * for later access.
+ */
 export interface BetterAuthPlugin {
   (config: Config): Config
   pluginOptions: BetterAuthPluginOptions
 }
 
+/**
+ * Extended PayloadRequest with typed Better Auth instance.
+ *
+ * Use this type in your collection hooks, endpoints, or middleware when you need
+ * access to the Better Auth client with full type inference from your plugin options.
+ *
+ * @template O - Your BetterAuthPluginOptions type for proper inference
+ *
+ * @example Using in a collection hook
+ * ```ts
+ * const myHook: CollectionHookWithBetterAuth<typeof pluginOptions, CollectionBeforeChangeHook> = async ({ req }) => {
+ *   const session = await req.payload.betterAuth.api.getSession({
+ *     headers: req.headers
+ *   })
+ *   // session is fully typed based on your plugins
+ * }
+ * ```
+ *
+ * @example Using in a custom endpoint
+ * ```ts
+ * const endpoint: EndpointWithBetterAuth<typeof pluginOptions> = {
+ *   path: '/custom',
+ *   method: 'get',
+ *   handler: async (req) => {
+ *     const { user } = await req.payload.betterAuth.api.getSession({
+ *       headers: req.headers
+ *     })
+ *     return Response.json({ user })
+ *   }
+ * }
+ * ```
+ */
 export interface PayloadRequestWithBetterAuth<O extends BetterAuthPluginOptions> extends PayloadRequest {
   payload: BasePayload & {
     betterAuth: BetterAuthReturn<O>
   }
 }
 
+/**
+ * Utility type for collection hooks that need typed Better Auth access.
+ *
+ * Transforms a standard Payload hook type to use {@link PayloadRequestWithBetterAuth}.
+ *
+ * @template O - Your BetterAuthPluginOptions type
+ * @template T - The Payload hook type (e.g., CollectionBeforeChangeHook)
+ *
+ * @example
+ * ```ts
+ * const beforeChange: CollectionHookWithBetterAuth<typeof myOptions, CollectionBeforeChangeHook> = async ({
+ *   req,
+ *   data
+ * }) => {
+ *   // req.payload.betterAuth is fully typed
+ *   return data
+ * }
+ * ```
+ */
 export type CollectionHookWithBetterAuth<O extends BetterAuthPluginOptions, T extends (args: any) => any> = T extends (
   args: infer A
 ) => infer R
   ? (args: Omit<A, 'req'> & { req: PayloadRequestWithBetterAuth<O> }) => R
   : never
 
+/**
+ * Utility type for custom endpoints that need typed Better Auth access.
+ *
+ * Extends Payload's Endpoint type with a typed request handler.
+ *
+ * @template O - Your BetterAuthPluginOptions type
+ */
 export type EndpointWithBetterAuth<O extends BetterAuthPluginOptions> = Omit<Endpoint, 'handler'> & {
   handler: (req: PayloadRequestWithBetterAuth<O>) => Promise<Response> | Response
 }
@@ -409,12 +562,54 @@ type ExtractRoles<O> = O extends { users?: { roles?: infer R } }
   : readonly [typeof defaults.userRole]
 type BaseErrorCodes = typeof BASE_ERROR_CODES
 
+/**
+ * The Better Auth instance returned by `payload.betterAuth`.
+ *
+ * This type provides full type inference based on your plugin configuration,
+ * including session/user types from enabled plugins (like organization, admin, etc.).
+ *
+ * @template O - Your BetterAuthPluginOptions type
+ *
+ * @property handler - Request handler for Better Auth API routes
+ * @property api - Typed API methods for auth operations (signIn, signUp, getSession, etc.)
+ * @property options - The resolved Better Auth options
+ * @property $ERROR_CODES - Error codes from Better Auth and enabled plugins
+ * @property $context - Promise resolving to the auth context
+ * @property $Infer - Type inference helpers for Session and User types
+ *
+ * @example Accessing in a server action
+ * ```ts
+ * import { getPayload } from 'payload'
+ * import config from '@payload-config'
+ *
+ * export async function getCurrentUser() {
+ *   const payload = await getPayload({ config })
+ *   const session = await payload.betterAuth.api.getSession({
+ *     headers: headers()
+ *   })
+ *   return session?.user
+ * }
+ * ```
+ *
+ * @example Using $Infer for type-safe user/session
+ * ```ts
+ * type Session = typeof payload.betterAuth.$Infer.Session
+ * type User = Session['user']
+ * // User type includes fields from all enabled plugins
+ * ```
+ */
 export type BetterAuthReturn<O extends BetterAuthPluginOptions = BetterAuthPluginOptions> = {
+  /** Request handler for `/api/auth/*` routes */
   handler: (request: Request) => Promise<Response>
+  /** Typed API methods for auth operations */
   api: InferAPI<ReturnType<typeof router<ExtractBA<O>>>>['endpoints']
+  /** The resolved Better Auth options */
   options: ExtractBA<O>
+  /** Error codes from Better Auth core and enabled plugins */
   $ERROR_CODES: InferPluginErrorCodes<ExtractBA<O>> & BaseErrorCodes
+  /** Auth context promise */
   $context: Promise<AuthContext>
+  /** Type inference helpers - use `$Infer.Session` to get the full session type */
   $Infer: InferPluginTypes<ExtractBA<O>> extends {
     Session: any
   }

@@ -1,3 +1,16 @@
+/**
+ * @module lib/build-collections/sessions
+ *
+ * Builds the Payload collection for Better Auth sessions.
+ *
+ * Sessions track active user authentication states. Each session contains:
+ * - A unique token for authentication
+ * - User reference (who owns the session)
+ * - Expiration time
+ * - Device info (IP address, user agent)
+ * - Optional organization/team context (if organization plugin enabled)
+ * - Optional impersonation info (if admin plugin enabled)
+ */
 import { baModelKey, baseSlugs } from '../../constants'
 import { getAdminAccess } from '../../helpers/get-admin-access'
 import { getCollectionFields } from './utils/transform-schema-fields-to-payload'
@@ -9,6 +22,46 @@ import type { CollectionConfig } from 'payload'
 import type { Session } from '@/better-auth/generated-types'
 import type { BuildCollectionProps, FieldOverrides, FieldRule } from '@/better-auth/plugin/types'
 
+/**
+ * Builds the sessions collection for Better Auth.
+ *
+ * This collection stores active user sessions. Sessions are created when users
+ * log in and are used to authenticate subsequent requests via session tokens.
+ *
+ * **Default slug:** `'sessions'`
+ *
+ * **Access control:** Admin-only by default (users can't view/modify sessions directly)
+ *
+ * **Key fields:**
+ * - `token` - Unique session identifier for authentication
+ * - `user` - Relationship to the user who owns the session
+ * - `expiresAt` - When the session will expire
+ * - `ipAddress` - Client IP address when session was created
+ * - `userAgent` - Browser/client information
+ * - `impersonatedBy` - (admin plugin) Admin who is impersonating
+ * - `activeOrganization` - (organization plugin) Currently selected organization
+ * - `activeTeam` - (organization plugin) Currently selected team
+ *
+ * @param props - Build collection properties
+ * @param props.incomingCollections - Existing collections from Payload config
+ * @param props.pluginOptions - Better Auth plugin configuration
+ * @param props.resolvedSchemas - Better Auth schemas with field mappings
+ * @returns Payload collection configuration for sessions
+ *
+ * @example Customizing via plugin options
+ * ```ts
+ * betterAuthPlugin({
+ *   sessions: {
+ *     slug: 'auth-sessions', // Custom slug
+ *     hidden: true, // Hide from admin panel
+ *     collectionOverrides: ({ collection }) => ({
+ *       ...collection,
+ *       admin: { ...collection.admin, description: 'Custom description' }
+ *     })
+ *   }
+ * })
+ * ```
+ */
 export function buildSessionsCollection({ incomingCollections, pluginOptions, resolvedSchemas }: BuildCollectionProps): CollectionConfig {
   const sessionSlug = getSchemaCollectionSlug(resolvedSchemas, baModelKey.session)
   const sessionSchema = resolvedSchemas[baModelKey.session]

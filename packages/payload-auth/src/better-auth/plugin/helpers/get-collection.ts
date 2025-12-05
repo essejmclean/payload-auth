@@ -1,6 +1,44 @@
+/**
+ * @module helpers/get-collection
+ *
+ * Utilities for looking up Payload collections by Better Auth model keys and field mappings.
+ *
+ * These helpers bridge the gap between Better Auth's internal model/field keys and
+ * Payload's collection configurations, enabling field name resolution across the two systems.
+ */
 import type { BetterAuthFullSchema, ModelKey } from '@/better-auth/generated-types'
 import { flattenAllFields, type Collection, type CollectionConfig } from 'payload'
 
+/**
+ * Finds a Payload collection configuration by its Better Auth model key.
+ *
+ * This function searches through the collections map to find a collection that either:
+ * 1. Has a `custom.betterAuthModelKey` property matching the given model key, or
+ * 2. Has a `slug` matching the model key (fallback)
+ *
+ * This is useful when you have a Better Auth model key (like `'user'` or `'session'`)
+ * and need to get the corresponding Payload collection configuration.
+ *
+ * @param collections - A record of Payload collections, typically from `payload.collections`
+ * @param modelKey - The Better Auth model key to search for (e.g., `'user'`, `'session'`, `'organization'`)
+ * @returns The matching Payload collection configuration
+ * @throws {Error} If no collection with the given model key is found
+ *
+ * @example Basic usage
+ * ```ts
+ * const userCollection = getCollectionByModelKey(payload.collections, 'user')
+ * console.log(userCollection.slug) // 'users'
+ * ```
+ *
+ * @example In a hook or endpoint
+ * ```ts
+ * const sessionCollection = getCollectionByModelKey(payload.collections, 'session')
+ * const sessions = await payload.find({
+ *   collection: sessionCollection.slug,
+ *   where: { userId: { equals: user.id } }
+ * })
+ * ```
+ */
 export function getCollectionByModelKey(collections: Record<string, Collection>, modelKey: ModelKey | string): CollectionConfig {
   const collection = Object.values(collections).find((c) => {
     return c.config?.custom?.betterAuthModelKey === modelKey || c.config?.slug === modelKey

@@ -1,3 +1,22 @@
+/**
+ * @module plugin/constants
+ *
+ * Constants and mappings used throughout the Better Auth plugin.
+ *
+ * This module defines:
+ * - Supported social providers and login methods
+ * - Better Auth plugin IDs and their string identifiers
+ * - Collection slug mappings (model key → Payload slug)
+ * - Field key mappings (BA field names → Payload field names)
+ * - Admin route and endpoint paths
+ * - Default role values
+ */
+
+/**
+ * Supported OAuth/social authentication providers.
+ *
+ * These correspond to Better Auth's built-in social provider plugins.
+ */
 export const socialProviders = [
   'apple',
   'discord',
@@ -18,6 +37,12 @@ export const socialProviders = [
   'reddit'
 ] as const
 
+/**
+ * All supported login/authentication methods.
+ *
+ * Includes both credential-based methods (email/password, magic link, etc.)
+ * and social provider authentication.
+ */
 export const loginMethods = [
   'emailPassword',
   'magicLink',
@@ -29,6 +54,18 @@ export const loginMethods = [
   ...socialProviders
 ] as const
 
+/**
+ * Mapping of camelCase plugin names to Better Auth's kebab-case plugin IDs.
+ *
+ * Better Auth uses kebab-case IDs internally for plugins. This mapping allows
+ * the plugin to check for enabled plugins by their canonical IDs.
+ *
+ * @example Checking if a plugin is enabled
+ * ```ts
+ * const pluginIds = betterAuthOptions.plugins?.map(p => p.id) ?? []
+ * const hasOrganization = pluginIds.includes(supportedBAPluginIds.organization)
+ * ```
+ */
 export const supportedBAPluginIds = {
   oneTimeToken: 'one-time-token',
   oAuthProxy: 'oauth-proxy',
@@ -67,6 +104,12 @@ export const supportedBAPluginIds = {
   lastLoginMethod: 'last-login-method'
 } as const
 
+/**
+ * Default collection slugs for core Better Auth models.
+ *
+ * These are the default Payload collection slugs used if no custom slug
+ * is specified in the plugin options.
+ */
 export const baseSlugs = {
   users: 'users',
   sessions: 'sessions',
@@ -75,6 +118,12 @@ export const baseSlugs = {
   adminInvitations: 'admin-invitations'
 } as const
 
+/**
+ * Default collection slugs for Better Auth plugin-specific models.
+ *
+ * These collections are created when specific Better Auth plugins are enabled
+ * (e.g., organization plugin creates organizations, members, invitations, teams).
+ */
 export const baPluginSlugs = {
   subscriptions: 'subscriptions',
   apiKeys: 'apiKeys',
@@ -92,6 +141,12 @@ export const baPluginSlugs = {
   teamMembers: 'teamMembers'
 } as const
 
+/**
+ * Better Auth internal model keys.
+ *
+ * These are the string identifiers that Better Auth uses internally to
+ * reference its database models/tables.
+ */
 export const baModelKey = {
   user: 'user',
   session: 'session',
@@ -114,6 +169,19 @@ export const baModelKey = {
   deviceCode: 'deviceCode'
 } as const
 
+/**
+ * Mapping of Better Auth field keys to Payload field names for relationship fields.
+ *
+ * Better Auth uses keys like `userId` that reference foreign keys, but Payload's
+ * relationship fields use more readable names like `user`. This mapping defines
+ * how BA field keys should be renamed when creating Payload fields.
+ *
+ * @example
+ * ```ts
+ * // Better Auth: { userId: '123' }
+ * // Payload field: { user: '123' } (relationship field named 'user')
+ * ```
+ */
 export const baModelFieldKeysToFieldNames = {
   user: {
     role: 'role'
@@ -162,6 +230,13 @@ export const baModelFieldKeysToFieldNames = {
   }
 } as const
 
+/**
+ * Better Auth field keys organized by model.
+ *
+ * This provides a type-safe way to reference BA field keys when building
+ * queries or mapping fields. Useful for the adapter when translating between
+ * BA's field names and Payload's field names.
+ */
 export const baModelFieldKeys = {
   teamMember: {
     teamId: 'teamId',
@@ -214,6 +289,14 @@ export const baModelFieldKeys = {
   }
 } as const
 
+/**
+ * Complete mapping from Better Auth model keys to Payload collection slugs.
+ *
+ * This is the canonical mapping used by `getDefaultCollectionSlug()` to resolve
+ * the Payload collection slug for any given BA model key.
+ *
+ * @see {@link getDefaultCollectionSlug} for the resolution function
+ */
 export const baModelKeyToSlug = {
   user: baseSlugs.users,
   session: baseSlugs.sessions,
@@ -235,6 +318,12 @@ export const baModelKeyToSlug = {
   jwks: baPluginSlugs.jwks
 } as const
 
+/**
+ * Admin panel route paths for Better Auth pages.
+ *
+ * When `disableDefaultPayloadAuth` is enabled, these routes are used for
+ * the custom login, password reset, and other auth flows in the Payload admin panel.
+ */
 export const adminRoutes = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
@@ -244,6 +333,12 @@ export const adminRoutes = {
   twoFactorVerify: '/two-factor-verify'
 } as const
 
+/**
+ * Custom API endpoint paths added to the users collection.
+ *
+ * These endpoints provide additional functionality for admin auth operations
+ * like setting admin roles, refreshing tokens, and sending invitations.
+ */
 export const adminEndpoints = {
   setAdminRole: '/set-admin-role',
   refreshToken: '/refresh-token',
@@ -252,6 +347,9 @@ export const adminEndpoints = {
   signup: '/signup'
 } as const
 
+/**
+ * Default role values used when no custom roles are specified.
+ */
 export const defaults = {
   adminRole: 'admin',
   userRole: 'user'

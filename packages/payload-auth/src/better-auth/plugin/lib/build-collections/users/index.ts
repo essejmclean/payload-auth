@@ -1,3 +1,20 @@
+/**
+ * @module lib/build-collections/users
+ *
+ * Builds the Payload collection for Better Auth users.
+ *
+ * The users collection is the most complex collection builder, handling:
+ * - Core user fields (email, name, image, etc.)
+ * - Role-based access control
+ * - Better Auth authentication strategy integration
+ * - Admin panel customizations (impersonate button, invite button)
+ * - Multiple auth plugin fields (two-factor, passkeys, username, etc.)
+ * - Custom endpoints (refresh token, admin invites, role management)
+ * - Login/logout hooks for session management
+ *
+ * This collection extends Payload's built-in auth collection pattern with
+ * Better Auth's authentication strategy.
+ */
 import { checkPluginExists } from '@/better-auth/plugin/helpers/check-plugin-exists'
 import { baModelFieldKeys, baModelKey, defaults, supportedBAPluginIds } from '../../../constants'
 import { getAllRoleOptions } from '../../../helpers/get-all-roles'
@@ -24,6 +41,67 @@ import type { CollectionConfig, UIField } from 'payload'
 import type { BuildCollectionProps, FieldOverrides, FieldRule } from '../../../types'
 import type { User } from '@/better-auth/generated-types'
 
+/**
+ * Builds the users collection for Better Auth.
+ *
+ * This is the primary user collection that integrates Payload's auth system with
+ * Better Auth. It creates a fully-featured user collection with role-based access
+ * control, custom admin UI components, and Better Auth strategy integration.
+ *
+ * **Default slug:** `'users'`
+ *
+ * **Access control:**
+ * - `admin`: Users with admin roles
+ * - `read`: Admins can read all, users can read their own
+ * - `create`: Admin-only
+ * - `update`: Admins can update all, users can update allowed fields on their own
+ * - `delete`: Admins can delete all, users can delete their own
+ *
+ * **Custom endpoints added:**
+ * - `POST /refresh-token` - Refresh session token
+ * - `POST /set-admin-role` - Set user role (admin only)
+ * - `POST /generate-invite-url` - Generate admin invitation link
+ * - `POST /send-invite` - Send invitation email
+ *
+ * **Admin UI components:**
+ * - Invite button in collection list description
+ * - Admin buttons (impersonate) in edit view
+ * - Passkey management field (if passkey plugin enabled)
+ * - Two-factor auth toggle component
+ *
+ * @param props - Build collection properties
+ * @param props.incomingCollections - Existing collections from Payload config
+ * @param props.pluginOptions - Better Auth plugin configuration
+ * @param props.resolvedSchemas - Better Auth schemas with field mappings
+ * @returns Payload collection configuration for users
+ *
+ * @example Basic customization
+ * ```ts
+ * betterAuthPlugin({
+ *   users: {
+ *     slug: 'members',
+ *     roles: ['user', 'premium'],
+ *     adminRoles: ['admin', 'super-admin'],
+ *     allowedFields: ['name', 'image']
+ *   }
+ * })
+ * ```
+ *
+ * @example Advanced customization with overrides
+ * ```ts
+ * betterAuthPlugin({
+ *   users: {
+ *     collectionOverrides: ({ collection }) => ({
+ *       ...collection,
+ *       fields: [
+ *         ...collection.fields,
+ *         { name: 'customField', type: 'text' }
+ *       ]
+ *     })
+ *   }
+ * })
+ * ```
+ */
 export function buildUsersCollection({ incomingCollections, pluginOptions, resolvedSchemas }: BuildCollectionProps): CollectionConfig {
   const userSlug = getSchemaCollectionSlug(resolvedSchemas, baModelKey.user)
   const passkeySlug = getSchemaCollectionSlug(resolvedSchemas, baModelKey.passkey)

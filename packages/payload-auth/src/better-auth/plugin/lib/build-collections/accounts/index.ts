@@ -1,3 +1,12 @@
+/**
+ * @module lib/build-collections/accounts
+ *
+ * Builds the Payload collection for Better Auth accounts.
+ *
+ * Accounts represent authentication provider connections for users. A single user
+ * can have multiple accounts (e.g., email/password + Google + GitHub). Each account
+ * stores provider-specific data like access tokens and refresh tokens.
+ */
 import { baModelKey, defaults } from '@/better-auth/plugin/constants'
 import { assertAllSchemaFields, getSchemaFieldName } from '../utils/collection-schema'
 import { isAdminOrCurrentUserWithRoles, isAdminWithRoles } from '../utils/payload-access'
@@ -9,6 +18,53 @@ import type { CollectionConfig } from 'payload'
 import { getSchemaCollectionSlug } from '../utils/collection-schema'
 import type { FieldRule } from '@/better-auth/plugin/types'
 
+/**
+ * Builds the accounts collection for Better Auth.
+ *
+ * This collection stores authentication provider accounts linked to users.
+ * Each account represents one way a user can authenticate (e.g., email/password,
+ * Google OAuth, GitHub OAuth, etc.).
+ *
+ * **Default slug:** `'accounts'`
+ *
+ * **Access control:**
+ * - `create`: Admin-only
+ * - `read`: Admins can read all, users can read their own accounts
+ * - `update`: Admin-only
+ * - `delete`: Admin-only
+ *
+ * **Key fields:**
+ * - `user` - Relationship to the owning user
+ * - `accountId` - Provider's ID for this account (or userId for credentials)
+ * - `providerId` - Authentication provider name (e.g., `'credential'`, `'google'`)
+ * - `accessToken` - OAuth access token (for social providers)
+ * - `refreshToken` - OAuth refresh token
+ * - `password` - Hashed password (for email/password provider only)
+ *
+ * **Hooks:**
+ * - `afterChange`: Syncs password changes back to the user collection
+ *   (when `disableDefaultPayloadAuth` is false)
+ *
+ * @param props - Build collection properties
+ * @param props.incomingCollections - Existing collections from Payload config
+ * @param props.pluginOptions - Better Auth plugin configuration
+ * @param props.resolvedSchemas - Better Auth schemas with field mappings
+ * @returns Payload collection configuration for accounts
+ *
+ * @example Customizing via plugin options
+ * ```ts
+ * betterAuthPlugin({
+ *   accounts: {
+ *     slug: 'auth-accounts',
+ *     hidden: true, // Hide from admin panel
+ *     collectionOverrides: ({ collection }) => ({
+ *       ...collection,
+ *       admin: { ...collection.admin, description: 'User login methods' }
+ *     })
+ *   }
+ * })
+ * ```
+ */
 export function buildAccountsCollection({ incomingCollections, pluginOptions, resolvedSchemas }: BuildCollectionProps): CollectionConfig {
   const accountSlug = getSchemaCollectionSlug(resolvedSchemas, baModelKey.account)
   const accountSchema = resolvedSchemas[baModelKey.account]

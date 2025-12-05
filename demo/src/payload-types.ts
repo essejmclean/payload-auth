@@ -288,6 +288,9 @@ export interface Organization {
    * Additional metadata for the organization.
    */
   metadata?: string | null;
+  industry?: string | null;
+  maxSeats?: number | null;
+  website?: string | null;
   updatedAt: string;
 }
 /**
@@ -912,6 +915,9 @@ export interface OrganizationsSelect<T extends boolean = true> {
   logo?: T;
   createdAt?: T;
   metadata?: T;
+  industry?: T;
+  maxSeats?: T;
+  website?: T;
   updatedAt?: T;
 }
 /**

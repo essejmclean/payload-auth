@@ -65,6 +65,28 @@ export const betterAuthPlugins = [
     teams: {
       enabled: true
     },
+    // Test: Adding custom fields to organization schema
+    schema: {
+      organization: {
+        additionalFields: {
+          industry: {
+            type: 'string',
+            input: true,
+            required: false
+          },
+          maxSeats: {
+            type: 'number',
+            input: true,
+            required: false
+          },
+          website: {
+            type: 'string',
+            input: true,
+            required: false
+          }
+        }
+      }
+    },
     async sendInvitationEmail(data) {
       const inviteLink = `${process.env.NEXT_PUBLIC_BETTER_AUTH_URL}/accept-invitation/${data.id}`
       console.log('Send invite for org: ', data, inviteLink)
@@ -149,7 +171,7 @@ export const betterAuthPluginOptions = {
   //   loginMethods: ['passkey']
   // },
   disableDefaultPayloadAuth: true,
-  hidePluginCollections: true,
+  // hidePluginCollections: true,
   users: {
     slug: 'users', // not required, this is the default anyways
     hidden: false,

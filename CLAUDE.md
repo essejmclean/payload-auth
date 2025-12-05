@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **fork** of an existing library that integrates [Better Auth](https://better-auth.com) with [Payload CMS](https://payloadcms.com). The original library reportedly works but has essentially no documentation.
 
-**Current state:**
+**Current state (verified working):**
+- Demo app runs successfully at localhost:3000
+- Tests pass (49/51, 2 skipped) - adapter tests work
 - The `/docs` folder is a direct copy of Better Auth's generic docs - not useful for this plugin
-- Tests exist but are incomplete (`plugins-tests.ts` is empty)
-- The code itself needs verification that it actually runs correctly
+- `plugins-tests.ts` is empty - needs implementation
 
 **Goals for this fork:**
 1. Document the existing code thoroughly
@@ -17,6 +18,20 @@ This is a **fork** of an existing library that integrates [Better Auth](https://
 3. Create real documentation specific to this plugin
 4. Verify everything works end-to-end
 5. Potentially contribute improvements back upstream
+
+## Local Development Setup
+
+```bash
+# Start Postgres via Docker
+docker compose up -d
+
+# This creates two databases:
+# - payload_auth_demo (for demo app)
+# - pba_tests (for tests)
+```
+
+The demo app `.env` is configured for:
+- `DATABASE_URI=postgres://postgres:postgres@localhost:5432/payload_auth_demo`
 
 ## Build & Development Commands
 
@@ -107,6 +122,28 @@ payload-auth/shared/payload/fields      # Shared field utilities
 ### Test Infrastructure
 
 Tests in `packages/payload-auth/src/better-auth/adapter/tests/`:
-- Requires a test Payload instance (see `dev/` folder)
-- `base-collections-tests.ts` - Comprehensive adapter tests from BA
+- Uses `pba_tests` database (auto-created by docker-compose)
+- `dev/index.ts` - Test Payload config with `push: true` for auto-schema
+- `base-collections-tests.ts` - Comprehensive adapter tests from Better Auth
 - `plugins-tests.ts` - Empty, needs implementation
+
+```bash
+# Run all tests
+cd packages/payload-auth && pnpm test -- --run
+
+# Run in watch mode
+cd packages/payload-auth && pnpm test
+```
+
+### Adapter API
+
+The `payloadAdapter()` function signature:
+```ts
+payloadAdapter({
+  payloadClient: BasePayload | Promise<BasePayload> | (() => Promise<BasePayload>),
+  adapterConfig: {
+    idType: 'number' | 'text',
+    enableDebugLogs?: boolean
+  }
+})
+```

@@ -96,9 +96,9 @@ export const payloadConfig = buildConfig({
   secret: 'super-secret-payload-key',
   db: postgresAdapter({
     pool: {
-      connectionString: 'postgres://forrestdevs:@localhost:5432/pba-tests'
+      connectionString: process.env.TEST_DATABASE_URI || 'postgres://postgres:postgres@localhost:5432/pba_tests'
     },
-    push: false,
+    push: true, // Auto-create schema for tests
     transactionOptions: false
   }),
   plugins: [betterAuthPlugin(betterAuthPluginOptions)]
